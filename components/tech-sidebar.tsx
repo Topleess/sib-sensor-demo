@@ -6,13 +6,13 @@ import { Home, Bell, FileText, User, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import SidebarHeader from "./sidebar-header"
 
-export default function Sidebar() {
+export default function TechSidebar() {
   const pathname = usePathname()
 
   const navigation = [
-    { name: "Dashboard", href: "/office", icon: Home },
-    { name: "События", href: "/office/events", icon: Bell },
-    { name: "Отчеты", href: "/office/reports", icon: FileText },
+    { name: "Dashboard", href: "/tech", icon: Home },
+    { name: "События", href: "/tech/events", icon: Bell },
+    { name: "Отчеты", href: "/tech/reports", icon: FileText },
   ]
 
   return (
@@ -52,4 +52,4 @@ export default function Sidebar() {
       </div>
     </div>
   )
-}
+} 

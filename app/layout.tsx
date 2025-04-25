@@ -1,14 +1,14 @@
 import type React from "react"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import Sidebar from "@/components/sidebar"
+import { Footer } from "@/components/footer"
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] })
 
 export const metadata = {
   title: "SibSensor Demo",
   description: "Система мониторинга коллекторов",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -18,10 +18,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={inter.className}>
-        <div className="flex h-screen bg-gray-50">
-          <Sidebar />
-          <main className="flex-1 overflow-auto">{children}</main>
+      <body 
+        className={inter.className} 
+        suppressHydrationWarning
+      >
+        <div className="flex flex-col min-h-screen">
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
         </div>
       </body>
     </html>
