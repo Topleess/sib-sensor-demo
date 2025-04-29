@@ -22,10 +22,10 @@ export default function SidebarHeader() {
   
   // Определяем доступные дешборды
   const dashboards: DashboardOption[] = [
-    { name: "Технологии", path: "/tech" },
+    { name: "Коллекторы (технологическая линия)", path: "/tech" },
     { name: "Офис", path: "/office" },
     { name: "Паркинг", path: "/parking" },
-    { name: "Безопасность", path: "/security" },
+    { name: "Коллекторы (безопасность)", path: "/security" },
   ]
   
   // Определяем текущий активный дешборд

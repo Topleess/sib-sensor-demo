@@ -59,7 +59,7 @@ export default function SecurityDashboardPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Безопасность</h1>
+        <h1 className="text-2xl font-semibold">Коллекторы (безопасность)</h1>
         <p className="text-sm text-gray-500">Обновлено 16:30</p>
       </div>
 

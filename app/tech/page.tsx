@@ -48,7 +48,7 @@ const events = [
   },
   {
     id: 3,
-    title: "Перегрев кабеля",
+    title: "Повышение температуры ЛЭП 10кВ",
     location: "на расстоянии 230 м",
     status: "Активно",
     date: "22.04.2024, 08:45"
@@ -108,7 +108,7 @@ export default function TechDashboardPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Технологии</h1>
+        <h1 className="text-2xl font-semibold">Коллекторы (технологическая линия)</h1>
         <p className="text-sm text-gray-500">Обновлено 16:30</p>
       </div>
 
@@ -203,7 +203,7 @@ export default function TechDashboardPage() {
             <Card>
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Температура ГВС</p>
+                  <p className="text-sm font-medium text-gray-500">Температура подающего трубопровода</p>
                   <p className="text-4xl font-bold text-red-500">65,2°C</p>
                   <p className="text-xs text-green-500 mt-1">
                     +2°C за 1ч
@@ -215,7 +215,7 @@ export default function TechDashboardPage() {
             <Card>
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Температура ХВС</p>
+                  <p className="text-sm font-medium text-gray-500">Температура обратного трубопровода</p>
                   <p className="text-4xl font-bold text-blue-500">9,8°C</p>
                   <p className="text-xs text-gray-500 mt-1">
                     +0°C за 1ч
@@ -227,7 +227,7 @@ export default function TechDashboardPage() {
             <Card>
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Электропередача</p>
+                  <p className="text-sm font-medium text-gray-500">Температура ЛЭП 10кВ</p>
                   <p className="text-4xl font-bold text-amber-500">42,5°C</p>
                   <p className="text-xs text-amber-500 mt-1">
                     -1°C за 1ч
@@ -244,7 +244,7 @@ export default function TechDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Температура ГВС</CardTitle>
+            <CardTitle>Температура подающего трубопровода</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -257,7 +257,7 @@ export default function TechDashboardPage() {
                 <Line 
                   type="monotone" 
                   dataKey="гвс" 
-                  name="Температура ГВС" 
+                  name="Температура подающего трубопровода" 
                   stroke="#ef4444" 
                   strokeWidth={2} 
                   dot={{ r: 5 }} 
@@ -270,7 +270,7 @@ export default function TechDashboardPage() {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Температура ХВС</CardTitle>
+            <CardTitle>Температура обратного трубопровода</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -283,7 +283,7 @@ export default function TechDashboardPage() {
                 <Line 
                   type="monotone" 
                   dataKey="хвс" 
-                  name="Температура ХВС" 
+                  name="Температура обратного трубопровода" 
                   stroke="#3b82f6" 
                   strokeWidth={2} 
                   dot={{ r: 5 }} 
@@ -296,7 +296,7 @@ export default function TechDashboardPage() {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Температура ЛЭП</CardTitle>
+            <CardTitle>Температура ЛЭП 10кВ</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -309,7 +309,7 @@ export default function TechDashboardPage() {
                 <Line 
                   type="monotone" 
                   dataKey="лэп" 
-                  name="Температура ЛЭП" 
+                  name="Температура ЛЭП 10кВ" 
                   stroke="#f59e0b" 
                   strokeWidth={2} 
                   dot={{ r: 5 }} 

@@ -1,10 +1,24 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bell } from "lucide-react"
+import { Bell, Thermometer } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { RoomSensorOverlay } from "@/components/room-sensor-overlay"
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from "recharts"
+
+// Моковые данные для графика температуры
+const weekTemperatureData = [
+  { day: "Пн", температура: 22.5 },
+  { day: "Вт", температура: 23.1 },
+  { day: "Ср", температура: 22.8 },
+  { day: "Чт", температура: 23.4 },
+  { day: "Пт", температура: 22.9 },
+  { day: "Сб", температура: 22.3 },
+  { day: "Вс", температура: 22.7 },
+];
 
 // Данные датчиков для комнаты 9 (конференц-зал)
 const room9Sensors = [
@@ -292,6 +306,50 @@ export default function OfficeDashboardPage() {
                 <span>→</span>
               </Link>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Показатели температуры и график */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        {/* Текущая температура */}
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Средняя температура в офисе</p>
+              <p className="text-4xl font-bold text-blue-500">22.7°C</p>
+              <p className="text-xs text-green-500 mt-1">
+                +0.3°C за 1ч
+              </p>
+            </div>
+            <Thermometer className="h-14 w-14 text-blue-500" />
+          </CardContent>
+        </Card>
+
+        {/* График температуры */}
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle>Динамика температуры за неделю</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={weekTemperatureData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis domain={[20, 25]} />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="температура" 
+                  name="Средняя температура" 
+                  stroke="#3b82f6" 
+                  strokeWidth={2} 
+                  dot={{ r: 5 }} 
+                  activeDot={{ r: 8 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

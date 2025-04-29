@@ -20,7 +20,7 @@ export default function HomePage() {
                 <Cpu className="h-10 w-10 text-blue-500" />
                 <ArrowRight className="h-5 w-5 text-gray-400" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Технологии</h2>
+              <h2 className="text-xl font-semibold mb-2">Коллекторы (технологическая линия)</h2>
               <p className="text-gray-500">Мониторинг технологических параметров, температуры теплоносителя, электросетей</p>
             </Card>
           </Link>
@@ -53,7 +53,7 @@ export default function HomePage() {
                 <Shield className="h-10 w-10 text-red-500" />
                 <ArrowRight className="h-5 w-5 text-gray-400" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">Безопасность</h2>
+              <h2 className="text-xl font-semibold mb-2">Коллекторы (безопасность)</h2>
               <p className="text-gray-500">Мониторинг систем безопасности, контроль доступа, видеонаблюдение</p>
             </Card>
           </Link>
