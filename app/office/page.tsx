@@ -8,6 +8,7 @@ import { RoomSensorOverlay } from "@/components/room-sensor-overlay"
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts"
+import { useEffect, useState } from "react"
 
 // Моковые данные для графика температуры
 const weekTemperatureData = [
@@ -135,12 +136,62 @@ const room1Sensors = [
   }
 ];
 
+// Тип для событий
+type Event = {
+  id: string;
+  title: string;
+  location: string;
+  status: string;
+  type: string;
+  timestamp: string;
+  length?: number;
+};
+
 export default function OfficeDashboardPage() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Загрузка событий с API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch('/api/events');
+        if (!response.ok) {
+          throw new Error('Ошибка при загрузке событий');
+        }
+        const data = await response.json();
+        setEvents(data);
+        
+        // Обновление времени последнего обновления
+        const now = new Date();
+        setLastUpdated(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`);
+        setLoading(false);
+      } catch (error) {
+        console.error('Ошибка при загрузке событий:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+
+    // Обновление данных каждые 5 минут
+    const interval = setInterval(fetchEvents, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Функция для квитирования события
+  const acknowledgeEvent = (eventId: string) => {
+    setEvents(prevEvents => 
+      prevEvents.filter(event => event.id !== eventId)
+    );
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Дашборд офиса</h1>
-        <p className="text-sm text-gray-500">Обновлено 16:30</p>
+        <p className="text-sm text-gray-500">Обновлено {lastUpdated}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -150,7 +201,7 @@ export default function OfficeDashboardPage() {
             <Card className="h-full hover:shadow-md transition-shadow">
               <div className="aspect-video relative bg-gray-100">
                 <Image 
-                  src="/images/rooms/room9.png" 
+                  src="/images/rooms/room9.jpg" 
                   alt="План комнаты 9" 
                   fill 
                   className="object-contain" 
@@ -159,7 +210,7 @@ export default function OfficeDashboardPage() {
                 <RoomSensorOverlay sensors={room9Sensors} />
               </div>
               <div className="p-4">
-                <p className="font-medium text-lg">Конференц-зал</p>
+                <p className="font-medium text-lg">Офис 1013, 1015 (объединены)</p>
                 <p className="text-sm text-gray-500">24.3°C</p>
               </div>
             </Card>
@@ -169,7 +220,7 @@ export default function OfficeDashboardPage() {
             <Card className="h-full hover:shadow-md transition-shadow">
               <div className="aspect-video relative bg-gray-100">
                 <Image 
-                  src="/images/rooms/room10.png" 
+                  src="/images/rooms/room10.jpg" 
                   alt="План комнаты 10" 
                   fill 
                   className="object-contain" 
@@ -188,7 +239,7 @@ export default function OfficeDashboardPage() {
             <Card className="h-full hover:shadow-md transition-shadow">
               <div className="aspect-video relative bg-gray-100">
                 <Image 
-                  src="/images/rooms/room7.png" 
+                  src="/images/rooms/room7.jpg" 
                   alt="План комнаты 7" 
                   fill 
                   className="object-contain" 
@@ -207,7 +258,7 @@ export default function OfficeDashboardPage() {
             <Card className="h-full hover:shadow-md transition-shadow">
               <div className="aspect-video relative bg-gray-100">
                 <Image 
-                  src="/images/rooms/room1.png" 
+                  src="/images/rooms/room1.jpg" 
                   alt="План комнаты 1" 
                   fill 
                   className="object-contain" 
@@ -230,76 +281,55 @@ export default function OfficeDashboardPage() {
             <CardDescription>Последние события в офисе</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-red-500">
-                <div className="flex justify-between">
-                  <h3 className="font-medium">Перегрев участка</h3>
-                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                    Активно
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-medium">Место:</span> Офис разработки
-                </p>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-gray-500">23.04.2024, 15:30</p>
-                  <button className="text-xs text-blue-600 hover:underline">
-                    Квитировать
-                  </button>
-                </div>
+            {loading ? (
+              <div className="flex justify-center items-center h-40">
+                <p>Загрузка событий...</p>
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-red-500">
-                <div className="flex justify-between">
-                  <h3 className="font-medium">Превышение порога температуры</h3>
-                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                    Активно
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-medium">Место:</span> Конференц-зал
-                </p>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-gray-500">22.04.2024, 08:45</p>
-                  <button className="text-xs text-blue-600 hover:underline">
-                    Квитировать
-                  </button>
-                </div>
+            ) : events.length > 0 ? (
+              <div className="space-y-4">
+                {events.slice(0, 4).map((event) => (
+                  <div 
+                    key={event.id} 
+                    className={`bg-gray-50 p-4 rounded-lg border-l-4 ${
+                      event.status === 'active' ? 'border-red-500' : 
+                      event.status === 'warning' ? 'border-amber-500' : 'border-blue-500'
+                    }`}
+                  >
+                    <div className="flex justify-between">
+                      <h3 className="font-medium">{event.title}</h3>
+                      <span 
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          event.status === 'active' ? 'bg-red-100 text-red-600' : 
+                          event.status === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                        }`}
+                      >
+                        {event.status === 'active' ? 'Активно' : 
+                         event.status === 'warning' ? 'Предупреждение' : 'Информация'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      <span className="font-medium">Место:</span> {event.location}
+                    </p>
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-xs text-gray-500">
+                        {new Date(event.timestamp).toLocaleDateString('ru-RU')}, 
+                        {new Date(event.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      <button 
+                        className="text-xs text-blue-600 hover:underline"
+                        onClick={() => acknowledgeEvent(event.id)}
+                      >
+                        Квитировать
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-amber-500">
-                <div className="flex justify-between">
-                  <h3 className="font-medium">Низкая влажность в серверной</h3>
-                  <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">
-                    Предупреждение
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-medium">Место:</span> Серверная
-                </p>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-gray-500">21.04.2024, 14:20</p>
-                  <button className="text-xs text-blue-600 hover:underline">
-                    Квитировать
-                  </button>
-                </div>
+            ) : (
+              <div className="flex justify-center items-center h-40">
+                <p className="text-gray-500">Нет активных событий</p>
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-red-500">
-                <div className="flex justify-between">
-                  <h3 className="font-medium">Открыто окно в конференц-зале</h3>
-                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                    Активно
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-medium">Место:</span> Конференц-зал
-                </p>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-gray-500">21.04.2024, 10:15</p>
-                  <button className="text-xs text-blue-600 hover:underline">
-                    Квитировать
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
             <div className="mt-4">
               <Link href="/office/events" className="text-sm text-blue-600 hover:underline flex justify-between items-center">
                 <span>Смотреть все события</span>

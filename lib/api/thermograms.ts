@@ -90,14 +90,20 @@ export async function getAllMaskTimes(): Promise<string[]> {
  * Получить маску, ближайшую к указанному времени
  */
 export async function getClosestMask(targetTime: string): Promise<any> {
-  const encodedTime = encodeURIComponent(targetTime);
-  const response = await fetch(`${API_BASE_URL}/masks/closest?target_time=${encodedTime}`);
-  
-  if (!response.ok) {
-    throw new Error('Не удалось получить маску');
+  try {
+    const encodedTime = encodeURIComponent(targetTime);
+    const response = await fetch(`${API_BASE_URL}/masks/closest?target_time=${encodedTime}`);
+    
+    if (!response.ok) {
+      console.warn('Не удалось получить маску, но это не критичная ошибка');
+      return null; // Возвращаем null вместо выбрасывания исключения
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.warn('Ошибка при получении маски, но продолжаем работу:', error);
+    return null; // Возвращаем null вместо пробрасывания ошибки дальше
   }
-  
-  return response.json();
 }
 
 /**

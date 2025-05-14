@@ -191,12 +191,16 @@ export default function TechDashboardPage() {
       const thermogramData = await getClosestThermogram(targetTime);
       setCurrentThermogram(thermogramData);
       
-      // Загружаем также маску для этого времени
+      // Загружаем также маску для этого времени - нам не критично, если не получится
       try {
         const maskData = await getClosestMask(targetTime);
-        setCurrentMask(maskData);
+        if (maskData) {
+          setCurrentMask(maskData);
+        } else {
+          console.log('Маска не получена, но это нормально');
+        }
       } catch (maskErr) {
-        console.error('Ошибка при загрузке маски:', maskErr);
+        console.warn('Ошибка при загрузке маски, но продолжаем работу:', maskErr);
         // Ошибка при загрузке маски не критична для отображения термограммы
       }
       
@@ -304,73 +308,88 @@ export default function TechDashboardPage() {
 
   // Функция для отображения термограммы на основе данных
   const renderThermogram = () => {
-    const canvas = canvasRef.current;
-    
-    if (!canvas) return null;
-    
-    useEffect(() => {
-      if (!canvas) return;
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      if (!currentThermogram) {
-        ctx.fillStyle = '#f5f5f5';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#888';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(loading ? "Загрузка термограммы..." : "Термограмма не доступна", canvas.width / 2, canvas.height / 2);
-        return;
-      }
-      
-      const thermogramData = currentThermogram.data;
-      if (!thermogramData || !thermogramData.values || !Array.isArray(thermogramData.values)) {
-        console.error('Некорректный формат данных термограммы');
-        return;
-      }
-      
-      // Размеры холста
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      
-      // Очищаем холст
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-      
-      // Если данные представлены в виде матрицы
-      if (Array.isArray(thermogramData.values) && Array.isArray(thermogramData.values[0])) {
-        const height = thermogramData.values.length;
-        const width = thermogramData.values[0].length;
-        
-        // Вычисляем размер пикселя
-        const pixelWidth = canvasWidth / width;
-        const pixelHeight = canvasHeight / height;
-        
-        // Определяем максимальное и минимальное значения для масштабирования цветов
-        let minVal = 0;
-        let maxVal = 60; // Максимальная температура на шкале
-        
-        // Рисуем термограмму
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const value = thermogramData.values[y][x];
-            const normalizedValue = Math.max(0, Math.min(1, (value - minVal) / (maxVal - minVal)));
-            
-            // Определяем цвет в зависимости от значения
-            const color = getTemperatureColor(normalizedValue);
-            
-            ctx.fillStyle = color;
-            ctx.fillRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
-          }
-        }
-      } else {
-        // Для поддержки другого формата данных
-        console.error('Неподдерживаемый формат данных термограммы');
-      }
-    }, [currentThermogram, canvas, loading]);
-    
-    return null;
+    return null; // Просто возвращаем null, так как отрисовка будет происходить через canvas
   };
+
+  // Эффект для отрисовки термограммы на canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    if (!currentThermogram) {
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#888';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(loading ? "Загрузка термограммы..." : "Термограмма не доступна", canvas.width / 2, canvas.height / 2);
+      return;
+    }
+    
+    const thermogramData = currentThermogram.data;
+    if (!thermogramData) {
+      console.error('Данные термограммы отсутствуют');
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#888';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText("Данные термограммы отсутствуют", canvas.width / 2, canvas.height / 2);
+      return;
+    }
+    
+    if (!thermogramData.values || !Array.isArray(thermogramData.values)) {
+      console.error('Некорректный формат данных термограммы');
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#888';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText("Некорректный формат данных термограммы", canvas.width / 2, canvas.height / 2);
+      return;
+    }
+    
+    // Размеры холста
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // Очищаем холст
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    
+    // Если данные представлены в виде матрицы
+    if (Array.isArray(thermogramData.values) && Array.isArray(thermogramData.values[0])) {
+      const height = thermogramData.values.length;
+      const width = thermogramData.values[0].length;
+      
+      // Вычисляем размер пикселя
+      const pixelWidth = canvasWidth / width;
+      const pixelHeight = canvasHeight / height;
+      
+      // Определяем максимальное и минимальное значения для масштабирования цветов
+      let minVal = 0;
+      let maxVal = 60; // Максимальная температура на шкале
+      
+      // Рисуем термограмму
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const value = thermogramData.values[y][x];
+          const normalizedValue = Math.max(0, Math.min(1, (value - minVal) / (maxVal - minVal)));
+          
+          // Определяем цвет в зависимости от значения
+          const color = getTemperatureColor(normalizedValue);
+          
+          ctx.fillStyle = color;
+          ctx.fillRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
+        }
+      }
+    } else {
+      // Для поддержки другого формата данных
+      console.error('Неподдерживаемый формат данных термограммы');
+    }
+  }, [currentThermogram, loading]);
   
   // Функция для получения цвета по значению температуры (0-1)
   const getTemperatureColor = (value: number): string => {
