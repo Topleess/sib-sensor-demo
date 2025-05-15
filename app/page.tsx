@@ -59,6 +59,7 @@ export default function HomePage() {
           </Link>
         </div>
 
+        {/* Закомментированный блок инструментов администратора
         <div className="mt-16 mb-8">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Инструменты администратора</h2>
@@ -88,6 +89,7 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
+        */}
       </div>
     </div>
   )

@@ -37,6 +37,7 @@ export default function SidebarHeader() {
         SibSensor Demo
       </Link>
       
+      {/* Закомментированный выпадающий список навигации
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center text-lg font-medium mt-1 text-gray-700 hover:text-blue-600 transition-colors">
@@ -57,6 +58,7 @@ export default function SidebarHeader() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      */}
     </div>
   )
 } 

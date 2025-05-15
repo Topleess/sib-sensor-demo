@@ -12,16 +12,26 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { SecuritySensorOverlay } from "@/components/security-sensor-overlay"
 import { useEffect, useState, useRef } from "react"
 import { 
-  ThermogramData, ValueUpdate, TemperatureData,
+  ThermogramData, ValueUpdate, TemperatureData, EventsData,
   getAllThermogramTimes, getClosestThermogram,
   updateHotThreshold, updateColdThreshold,
-  getAllMaskTimes, getClosestMask,
+  getAllMaskTimes, getClosestMask, getEventsData,
   getHotTemperatureHistory, getColdTemperatureHistory,
   getCurrentTemperatures
 } from "@/lib/api/thermograms"
 
+// Определяем интерфейс для точек графика
+interface ChartPoint {
+  time?: string;
+  day?: string;
+  гвс: number | null;
+  хвс: number | null;
+  лэп: number | null;
+  timestamp?: string;
+}
+
 // Моковые данные для графиков
-const weekData = [
+const weekData: ChartPoint[] = [
   { day: "Пн", гвс: 65, хвс: 10, лэп: 43 },
   { day: "Вт", гвс: 67, хвс: 9, лэп: 44 },
   { day: "Ср", гвс: 66, хвс: 8, лэп: 42 },
@@ -40,7 +50,16 @@ const thermalData = [
   { value: 200, color: "#4c1d95" }, // критически горячо
 ];
 
-const events = [
+// Определяем интерфейс для событий
+interface Event {
+  id: number | string;
+  title: string;
+  location: string;
+  status: string;
+  date: string;
+}
+
+const events: Event[] = [
   {
     id: 1,
     title: "Утечка теплоносителя",
@@ -52,7 +71,7 @@ const events = [
     id: 2,
     title: "Утечка холодной воды",
     location: "83 м от начала",
-    status: "Активно",
+    status: "Активно", 
     date: "23.04.2024, 15:30"
   },
   {
@@ -127,42 +146,87 @@ export default function TechDashboardPage() {
   const [currentTemps, setCurrentTemps] = useState<{hot: number, cold: number, lep: number}>({ hot: 65.2, cold: 9.8, lep: 42.5 });
   const [hotHistoryData, setHotHistoryData] = useState<TemperatureData[]>([]);
   const [coldHistoryData, setColdHistoryData] = useState<TemperatureData[]>([]);
-  const [chartData, setChartData] = useState(weekData);
+  const [chartData, setChartData] = useState<ChartPoint[]>(weekData);
+  const [eventsData, setEventsData] = useState<EventsData | null>(null);
+  const [realEvents, setRealEvents] = useState<Event[]>(events);
+  const [debugMode, setDebugMode] = useState<boolean>(true); // Режим отладки
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Загрузка данных при монтировании компонента
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log("Начало загрузки данных");
         setLoading(true);
+        
         // Получаем список времен термограмм
-        const thermogramTimesData = await getAllThermogramTimes();
-        setThermogramTimes(thermogramTimesData);
+        let thermogramTimesData: string[] = [];
+        try {
+          thermogramTimesData = await getAllThermogramTimes();
+          console.log(`Получено ${thermogramTimesData.length} времен термограмм`);
+          setThermogramTimes(thermogramTimesData);
+        } catch (thermErr) {
+          console.error("Ошибка при загрузке времен термограмм:", thermErr);
+          // Используем тестовые времена
+          const now = new Date();
+          thermogramTimesData = [
+            new Date(now.getTime() - 3600000 * 24).toISOString(),
+            new Date(now.getTime() - 3600000 * 12).toISOString(),
+            new Date(now.getTime() - 3600000 * 6).toISOString(),
+            new Date(now.getTime() - 3600000 * 3).toISOString(),
+            new Date().toISOString(),
+          ];
+          setThermogramTimes(thermogramTimesData);
+        }
         
         // Если есть хотя бы одно время, загружаем самую последнюю термограмму
         if (thermogramTimesData.length > 0) {
           const latestTime = thermogramTimesData[thermogramTimesData.length - 1];
+          console.log(`Загружаем термограмму для времени: ${latestTime}`);
           await fetchThermogramAndMask(latestTime);
         }
 
         // Загружаем текущие температуры
-        const temps = await getCurrentTemperatures();
-        setCurrentTemps(temps);
+        try {
+          const temps = await getCurrentTemperatures();
+          console.log("Получены текущие температуры:", temps);
+          setCurrentTemps(temps);
+        } catch (tempErr) {
+          console.error("Ошибка при загрузке текущих температур:", tempErr);
+          // Оставляем дефолтные значения
+        }
         
         // Загружаем исторические данные температуры
-        const hotHistory = await getHotTemperatureHistory();
-        const coldHistory = await getColdTemperatureHistory();
+        let hotHistory: TemperatureData[] = [];
+        let coldHistory: TemperatureData[] = [];
         
-        setHotHistoryData(hotHistory);
-        setColdHistoryData(coldHistory);
+        try {
+          hotHistory = await getHotTemperatureHistory();
+          setHotHistoryData(hotHistory);
+        } catch (hotErr) {
+          console.error("Ошибка при загрузке истории температуры ГВС:", hotErr);
+          // Устанавливаем пустой массив, функция prepareChartData сама обработает это
+        }
+        
+        try {
+          coldHistory = await getColdTemperatureHistory();
+          setColdHistoryData(coldHistory);
+        } catch (coldErr) {
+          console.error("Ошибка при загрузке истории температуры ХВС:", coldErr);
+          // Устанавливаем пустой массив, функция prepareChartData сама обработает это
+        }
         
         // Подготавливаем данные для графиков
+        console.log("Подготовка данных для графиков");
         prepareChartData(hotHistory, coldHistory);
+        
+        console.log("Загрузка данных завершена");
       } catch (err) {
-        console.error('Ошибка при загрузке данных:', err);
+        console.error('Общая ошибка при загрузке данных:', err);
         setError('Не удалось загрузить данные термограмм');
       } finally {
         setLoading(false);
+        setLastUpdated(new Date().toLocaleTimeString());
       }
     };
 
@@ -171,6 +235,7 @@ export default function TechDashboardPage() {
     // Обновляем данные каждые 5 минут
     const intervalId = setInterval(async () => {
       try {
+        console.log("Автоматическое обновление данных");
         const temps = await getCurrentTemperatures();
         setCurrentTemps(temps);
         setLastUpdated(new Date().toLocaleTimeString());
@@ -204,12 +269,75 @@ export default function TechDashboardPage() {
         // Ошибка при загрузке маски не критична для отображения термограммы
       }
       
+      // Загружаем данные о событиях
+      try {
+        const events = await getEventsData(targetTime);
+        setEventsData(events);
+        updateEventsFromData(events);
+      } catch (eventsErr) {
+        console.warn('Ошибка при загрузке событий:', eventsErr);
+      }
+      
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Ошибка при загрузке термограммы:', err);
       setError('Не удалось загрузить термограмму');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Функция преобразования данных API в события для отображения
+  const updateEventsFromData = (data: EventsData) => {
+    console.log("Обработка данных о событиях:", data);
+    const newEvents: Event[] = [];
+    
+    // Проходим по массивам утечек и создаем события
+    for (let i = 0; i < data.hot_leak.length; i++) {
+      const hotLeakStatus = data.hot_leak[i];
+      const coldLeakStatus = data.cold_leak[i];
+      const length = data.length[i];
+      
+      console.log(`Точка ${i}: горячая=${hotLeakStatus}, холодная=${coldLeakStatus}, длина=${length}`);
+      
+      // Добавляем событие горячей утечки, если она началась
+      if (hotLeakStatus === 2) {
+        newEvents.push({
+          id: `hot-${i}`,
+          title: "Утечка теплоносителя",
+          location: `${(length * 1000).toFixed(0)} м от начала`,
+          status: "Активно",
+          date: new Date(data.date_time).toLocaleString()
+        });
+      }
+      
+      // Добавляем событие холодной утечки, если она началась
+      if (coldLeakStatus === 2) {
+        newEvents.push({
+          id: `cold-${i}`,
+          title: "Утечка холодной воды",
+          location: `${(length * 1000).toFixed(0)} м от начала`,
+          status: "Активно",
+          date: new Date(data.date_time).toLocaleString()
+        });
+      }
+    }
+    
+    console.log("Сформированные события:", newEvents);
+    
+    // Если нет событий из API, используем тестовое событие ЛЭП
+    if (newEvents.length > 0) {
+      setRealEvents(newEvents);
+    } else {
+      // Добавляем одно событие для ЛЭП, так как оно не отслеживается в API
+      const lepEvent: Event = {
+        id: 3,
+        title: "Повышение температуры ЛЭП 10кВ",
+        location: "на расстоянии 230 м",
+        status: "Активно",
+        date: new Date().toLocaleString()
+      };
+      setRealEvents([lepEvent]);
     }
   };
 
@@ -237,73 +365,123 @@ export default function TechDashboardPage() {
 
   // Подготовка данных для графиков из исторических данных
   const prepareChartData = (hotHistory: TemperatureData[], coldHistory: TemperatureData[]) => {
-    // Создаем объект для хранения данных по дням
-    interface DayData {
-      day: string;
-      гвс: number;
-      хвс: number;
-      лэп: number;
-      count: { гвс: number; хвс: number; лэп: number };
+    console.log("Подготовка данных для графиков");
+    console.log("Исходные данные ГВС:", hotHistory);
+    console.log("Исходные данные ХВС:", coldHistory);
+    
+    // Если нет данных, возвращаем тестовые
+    if (hotHistory.length === 0 && coldHistory.length === 0) {
+      console.log("Нет данных из API, используем тестовые данные");
+      setChartData(weekData);
+      return;
     }
     
-    const dayMap: Record<string, DayData> = {};
+    // Создаем объединенный массив точек данных
+    const allDataPoints: ChartPoint[] = [];
     
-    // Проходим по данным температуры горячей воды
+    // Создаем Map для быстрого поиска и обновления существующих точек
+    const pointsMap = new Map<string, ChartPoint>();
+    
+    // Преобразуем данные горячей воды
     hotHistory.forEach(item => {
       const date = new Date(item.timestamp);
-      const day = date.toLocaleDateString('ru-RU', { weekday: 'short' });
+      // Формат времени: "ДД.ММ ЧЧ:ММ"
+      const timeStr = `${date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
       
-      if (!dayMap[day]) {
-        dayMap[day] = { 
-          day, 
-          гвс: 0, 
-          хвс: 0, 
-          лэп: 0, 
-          count: { гвс: 0, хвс: 0, лэп: 0 } 
+      // Используем Map для поиска и обновления точек
+      if (!pointsMap.has(item.timestamp)) {
+        // Создаем точку с null значениями для неизвестных параметров
+        const point: ChartPoint = { 
+          timestamp: item.timestamp, 
+          time: timeStr,
+          гвс: item.value,
+          хвс: null as unknown as number, // Будет заполнено позже, если данные есть
+          лэп: null as unknown as number  // Будет заполнено позже
         };
+        pointsMap.set(item.timestamp, point);
+        allDataPoints.push(point);
+      } else {
+        // Обновляем существующую точку
+        const point = pointsMap.get(item.timestamp)!;
+        point.гвс = item.value;
       }
-      
-      dayMap[day].гвс += item.value;
-      dayMap[day].count.гвс += 1;
     });
     
-    // Проходим по данным температуры холодной воды
+    // Преобразуем данные холодной воды
     coldHistory.forEach(item => {
       const date = new Date(item.timestamp);
-      const day = date.toLocaleDateString('ru-RU', { weekday: 'short' });
+      const timeStr = `${date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
       
-      if (!dayMap[day]) {
-        dayMap[day] = { 
-          day, 
-          гвс: 0, 
-          хвс: 0, 
-          лэп: 0, 
-          count: { гвс: 0, хвс: 0, лэп: 0 } 
+      // Используем Map для поиска и обновления точек
+      if (!pointsMap.has(item.timestamp)) {
+        // Создаем точку с null значениями для неизвестных параметров
+        const point: ChartPoint = { 
+          timestamp: item.timestamp, 
+          time: timeStr,
+          гвс: null as unknown as number, // Будет заполнено позже, если данные есть
+          хвс: item.value,
+          лэп: null as unknown as number  // Будет заполнено позже
         };
+        pointsMap.set(item.timestamp, point);
+        allDataPoints.push(point);
+      } else {
+        // Обновляем существующую точку
+        const point = pointsMap.get(item.timestamp)!;
+        point.хвс = item.value;
+      }
+    });
+    
+    // Сортируем точки по времени
+    allDataPoints.sort((a, b) => {
+      if (!a.timestamp || !b.timestamp) return 0;
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+    
+    // Заполняем пропущенные значения и добавляем ЛЭП
+    allDataPoints.forEach(point => {
+      // Используем последнее известное значение, если у точки отсутствует ГВС
+      if (point.гвс === null) {
+        // Ищем ближайшую точку с ГВС
+        const lastHotPoint = allDataPoints.find(p => p !== point && p.гвс !== null);
+        point.гвс = lastHotPoint ? lastHotPoint.гвс : 65; // Дефолтное значение, если нет данных
       }
       
-      dayMap[day].хвс += item.value;
-      dayMap[day].count.хвс += 1;
+      // Используем последнее известное значение, если у точки отсутствует ХВС
+      if (point.хвс === null) {
+        // Ищем ближайшую точку с ХВС
+        const lastColdPoint = allDataPoints.find(p => p !== point && p.хвс !== null);
+        point.хвс = lastColdPoint ? lastColdPoint.хвс : 10; // Дефолтное значение, если нет данных
+      }
+      
+      // Генерируем значение ЛЭП
+      point.лэп = Math.max(35, Math.min(50, (point.гвс || 65) - 20 + (Math.random() * 5 - 2.5)));
     });
     
-    // Добавляем значения для ЛЭП (используем моковые данные)
-    Object.keys(dayMap).forEach(day => {
-      dayMap[day].лэп = 40 + Math.random() * 5;
-      dayMap[day].count.лэп = 1;
-    });
+    console.log(`Подготовлено ${allDataPoints.length} точек данных для графика`);
     
-    // Вычисляем средние значения и формируем финальный массив
-    const result = Object.keys(dayMap).map(day => {
-      const item = dayMap[day];
-      return {
-        day,
-        гвс: item.count.гвс > 0 ? parseFloat((item.гвс / item.count.гвс).toFixed(1)) : 0,
-        хвс: item.count.хвс > 0 ? parseFloat((item.хвс / item.count.хвс).toFixed(1)) : 0,
-        лэп: item.count.лэп > 0 ? parseFloat((item.лэп / item.count.лэп).toFixed(1)) : 0
-      };
-    });
+    // Если точек слишком много, выбираем подмножество для лучшей производительности
+    let finalDataPoints = allDataPoints;
     
-    setChartData(result.length > 0 ? result : weekData);
+    if (allDataPoints.length > 30) {
+      console.log("Слишком много точек, выбираем подмножество для лучшей производительности");
+      
+      // Вычисляем шаг выборки, чтобы получить примерно 25-30 точек
+      const step = Math.max(1, Math.floor(allDataPoints.length / 25));
+      
+      // Выбираем точки с шагом для ровного распределения
+      finalDataPoints = allDataPoints.filter((_, index) => index % step === 0);
+      
+      // Всегда добавляем последнюю точку для актуальности
+      if (allDataPoints.length > 0 && finalDataPoints[finalDataPoints.length - 1] !== allDataPoints[allDataPoints.length - 1]) {
+        finalDataPoints.push(allDataPoints[allDataPoints.length - 1]);
+      }
+      
+      console.log(`Отфильтровано до ${finalDataPoints.length} точек с шагом ${step}`);
+    }
+    
+    console.log("Итоговые данные для графиков:", finalDataPoints);
+    
+    setChartData(finalDataPoints.length > 0 ? finalDataPoints : weekData);
   };
 
   // Функция для отображения термограммы на основе данных
@@ -426,13 +604,75 @@ export default function TechDashboardPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Коллекторы (технологическая линия)</h1>
-        <p className="text-sm text-gray-500">Обновлено {lastUpdated}</p>
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-gray-500">Обновлено {lastUpdated}</p>
+          <button 
+            onClick={() => setDebugMode(!debugMode)}
+            className="px-2 py-1 bg-gray-100 text-xs rounded-md hover:bg-gray-200"
+          >
+            {debugMode ? "Скрыть отладку" : "Показать отладку"}
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 flex justify-between items-center">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-700">×</button>
+        </div>
+      )}
+      
+      {/* Отладочная панель */}
+      {debugMode && (
+        <div className="bg-gray-100 border border-gray-300 p-4 rounded-lg mb-6 overflow-auto max-h-96 text-xs">
+          <h3 className="font-bold mb-2">Состояние данных (режим отладки)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="font-medium">Термограмма:</p>
+              <p>Загружено {thermogramTimes.length} времен</p>
+              <p>Текущее время: {currentThermogram?.timestamp || "не выбрано"}</p>
+              <p>Маска: {currentMask ? "загружена" : "отсутствует"}</p>
+            </div>
+            <div>
+              <p className="font-medium">События:</p>
+              <p>Данные API: {eventsData ? "загружены" : "отсутствуют"}</p>
+              <p>Активные события: {realEvents.length}</p>
+              {eventsData && (
+                <div>
+                  <p>Точек данных: {eventsData.hot_leak.length}</p>
+                  <p>Время данных: {new Date(eventsData.date_time).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="font-medium">Исторические данные:</p>
+              <p>ГВС записей: {hotHistoryData.length}</p>
+              <p>ХВС записей: {coldHistoryData.length}</p>
+              <p>Точек на графике: {chartData.length}</p>
+            </div>
+            <div>
+              <p className="font-medium">Текущие значения:</p>
+              <p>ГВС: {currentTemps.hot.toFixed(1)}°C</p>
+              <p>ХВС: {currentTemps.cold.toFixed(1)}°C</p>
+              <p>ЛЭП: {currentTemps.lep.toFixed(1)}°C</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <button 
+              onClick={() => console.log({
+                thermogramTimes,
+                currentThermogram,
+                eventsData,
+                realEvents,
+                hotHistoryData,
+                coldHistoryData,
+                chartData
+              })}
+              className="px-2 py-1 bg-blue-100 rounded text-blue-700 hover:bg-blue-200"
+            >
+              Показать данные в консоли
+            </button>
+          </div>
         </div>
       )}
 
@@ -606,7 +846,7 @@ export default function TechDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {events.map((event) => (
+                {realEvents.map((event) => (
                   <div key={event.id} className="bg-gray-50 p-4 rounded-lg border-l-4 border-red-500">
                     <div className="flex justify-between">
                       <h3 className="font-medium">{event.title}</h3>
@@ -687,18 +927,30 @@ export default function TechDashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
+                <XAxis 
+                  dataKey={chartData[0]?.time ? "time" : "day"} 
+                  angle={-45} 
+                  textAnchor="end"
+                  height={80}
+                  interval="preserveStartEnd"
+                  tick={{fontSize: 10}}
+                />
                 <YAxis domain={[50, 80]} />
-                <Tooltip />
+                <Tooltip 
+                  formatter={(value: any) => [`${value} °C`, 'Температура ГВС']} 
+                  labelFormatter={(label) => `Время: ${label}`}
+                />
                 <Legend />
                 <Line 
                   type="monotone" 
                   dataKey="гвс" 
                   name="Температура подающего трубопровода" 
                   stroke="#ef4444" 
-                  strokeWidth={2} 
-                  dot={{ r: 5 }} 
-                  activeDot={{ r: 8 }}
+                  strokeWidth={1.5}
+                  connectNulls={true}
+                  dot={chartData.length > 20 ? false : { r: 2 }} 
+                  activeDot={{ r: 6 }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -713,18 +965,30 @@ export default function TechDashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
+                <XAxis 
+                  dataKey={chartData[0]?.time ? "time" : "day"} 
+                  angle={-45} 
+                  textAnchor="end"
+                  height={80}
+                  interval="preserveStartEnd"
+                  tick={{fontSize: 10}}
+                />
                 <YAxis domain={[4, 12]} />
-                <Tooltip />
+                <Tooltip 
+                  formatter={(value: any) => [`${value} °C`, 'Температура ХВС']} 
+                  labelFormatter={(label) => `Время: ${label}`}
+                />
                 <Legend />
                 <Line 
                   type="monotone" 
                   dataKey="хвс" 
                   name="Температура обратного трубопровода" 
                   stroke="#3b82f6" 
-                  strokeWidth={2} 
-                  dot={{ r: 5 }} 
-                  activeDot={{ r: 8 }}
+                  strokeWidth={1.5}
+                  connectNulls={true}
+                  dot={chartData.length > 20 ? false : { r: 2 }} 
+                  activeDot={{ r: 6 }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -739,18 +1003,30 @@ export default function TechDashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
+                <XAxis 
+                  dataKey={chartData[0]?.time ? "time" : "day"} 
+                  angle={-45} 
+                  textAnchor="end"
+                  height={80}
+                  interval="preserveStartEnd"
+                  tick={{fontSize: 10}}
+                />
                 <YAxis domain={[35, 50]} />
-                <Tooltip />
+                <Tooltip 
+                  formatter={(value: any) => [`${value} °C`, 'Температура ЛЭП']} 
+                  labelFormatter={(label) => `Время: ${label}`}
+                />
                 <Legend />
                 <Line 
                   type="monotone" 
                   dataKey="лэп" 
                   name="Температура ЛЭП 10кВ" 
                   stroke="#f59e0b" 
-                  strokeWidth={2} 
-                  dot={{ r: 5 }} 
-                  activeDot={{ r: 8 }}
+                  strokeWidth={1.5}
+                  connectNulls={true}
+                  dot={chartData.length > 20 ? false : { r: 2 }} 
+                  activeDot={{ r: 6 }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
